@@ -1,0 +1,41 @@
+dialog {
+  text: "Fast Export",
+  orientation: "column",
+  alignChildren: "fill",
+  lblDest: StaticText {
+    alignment: "left",
+    text: "Destination:"
+  },
+  funcArea: Group {
+    orientation: "row",
+    alignChildren: "top",
+    content: Group {
+      orientation: "column",
+      alignChildren: "left",
+      grpDest: Group {
+        orientation: "row",
+        alignChildren: "left",
+        txtDest: EditText {preferredSize: [310, 20], properties: {readonly: true}},
+        btnDest: Button {text: "Browse..."}
+      },
+      pnlOptions: Panel {
+        text: "Options:",
+        orientation: "stack",
+        alignment: "fill",
+        preferredSize: [200, 100],
+        jpgQuality: Group{
+          label: StaticText{text:"Quality"},
+          quality: Slider {maxvalue:10,minvalue:1},
+          qualityValue: StaticText{text:"10"}
+        }
+      }
+    },
+    buttons: Group {
+      orientation: "column",
+      btnRun: Button {text: "Run"},
+      btnCancel: Button {text: "Cancel"},
+      txtSpace: StaticText {},
+      btnSettings: Button {text: "Save and Cancel", helpTip: "Save current settings and cancel."}
+    }
+  }
+}
