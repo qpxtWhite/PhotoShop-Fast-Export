@@ -14,3 +14,5 @@
 ### Export Selected Layers.jsx
 * 1、选中图层
 * 2、执行脚本
+
+##### 推荐将脚本放入Photoshop安装目录下：Presets/Scripts，然后绑定快捷键使用
