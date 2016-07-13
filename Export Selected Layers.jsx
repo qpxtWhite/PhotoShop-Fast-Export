@@ -93,6 +93,9 @@ function makeValidFileName(fileName, replaceSpaces)
     return validName;
 }
 
+cTID = function(s) { return app.charIDToTypeID(s); };
+sTID = function(s) { return app.stringIDToTypeID(s); };
+
 
 /*** 定义变量 ***/
 var scriptFileDirectory,
@@ -128,7 +131,7 @@ function showOptionsDialog(){
         }
         content.pnlOptions.jpgQuality.quality.value = setting.jpgQuality;
         content.pnlOptions.jpgQuality.qualityValue.text = setting.jpgQuality;
-        
+
         buttons.btnCancel.onClick = function(){
             dlg.close(0);
         }
@@ -163,30 +166,81 @@ function main(){
     }
 }
 
-function executeScript(){
-    newDoc = app.documents.add(doc.width, doc.height, 72, "exportLayer", NewDocumentMode.RGB, DocumentFill.TRANSPARENT) //创建新文档
-    app.activeDocument = doc;
-    duplicateLayers(doc, 0);    //复制需要导出的图层到新文档
-    app.activeDocument = newDoc;
-    var layers = [];
-    for(var i=0, l=newDoc.layers.length; i<l; i++){
-        var layer = newDoc.layers[i]
-        layer.visible = false;  //将新文档中的所有图层置为隐藏
-        if(fileNameReg.test(layer.name)){
-            layers.push(layer)
-        }
-    }
-    layers.each(function(layer){
-        exportLayer(newDoc, layer); //导出单个图层
-    })
-    newDoc.close(SaveOptions.DONOTSAVECHANGES);
-    newDoc = null;
-    alert('exported '+ layers.length +' files')
+function getSelectedLayer(document){
+    var selLayers = [];
+    var desc = new ActionDescriptor();
+    var ref = new ActionReference();
+    ref.putClass( sTID('layerSection') );
+    desc.putReference( cTID('null'), ref );
+    var lref = new ActionReference();
+    lref.putEnumerated( cTID('Lyr '), cTID('Ordn'), cTID('Trgt') );
+    desc.putReference( cTID('From'), lref);
+    executeAction( cTID('Mk  '), desc, DialogModes.NO );
+    var group = doc.activeLayer;
+    var layers = group.layers;
 
+    for (var i = 0; i < layers.length; i++) {
+        selLayers.push(layers[i]);
+    }
+
+    executeAction(cTID("undo", undefined, DialogModes.NO));
+    return selLayers;
 }
 
+// function executeScript(){
+//     var selectedLayers = getSelectedLayer(doc);
+//     newDoc = app.documents.add(doc.width, doc.height, 72, "exportLayer", NewDocumentMode.RGB, DocumentFill.TRANSPARENT) //创建新文档
+//     app.activeDocument = doc;
+//     //复制需要导出的图层到新文档
+//     selectedLayers.each(function(layer){
+//         layer.duplicate(newDoc);
+//     });
+//     app.activeDocument = newDoc;
+//     var layers = [];
+//     for(var i=0, l=newDoc.layers.length; i<l; i++){
+//         var layer = newDoc.layers[i]
+//         layer.visible = false;  //将新文档中的所有图层置为隐藏
+//         layers.push(layer);
+//     }
+//     layers.each(function(layer){
+//         exportLayer(newDoc, layer); //导出单个图层
+//     })
+//     newDoc.close(SaveOptions.DONOTSAVECHANGES);
+//     newDoc = null;
+//     alert('exported '+ layers.length +' files')
+// }
+
+function executeScript(){
+    dupLayers();    //将选中图层复制到新文档
+    newDoc = app.activeDocument;
+    var newLayers = [];
+    for(var i=0,l=newDoc.layers.length; i<l; i++){
+        var layer = newDoc.layers[i];
+        layer.visible = false;
+        newLayers.push(layer);
+    }
+    newLayers.each(function(layer){
+        exportLayer(newDoc, layer);
+    })
+    newDoc.close(SaveOptions.DONOTSAVECHANGES)
+    newDoc = null;
+    alert('exported '+ newLayers.length +' files')
+}
+
+function dupLayers() {
+    var desc143 = new ActionDescriptor();
+    var ref73 = new ActionReference();
+    ref73.putClass( charIDToTypeID('Dcmn') );
+    desc143.putReference( charIDToTypeID('null'), ref73 );
+    desc143.putString( charIDToTypeID('Nm  '), 'new document' );
+    var ref74 = new ActionReference();
+    ref74.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
+    desc143.putReference( charIDToTypeID('Usng'), ref74 );
+    executeAction( charIDToTypeID('Mk  '), desc143, DialogModes.NO );
+};
+
 function exportLayer(document, layer){
-    makeVisible(layer); //将图层置为可见
+    layer.visible = true; //将图层置为可见
     document.trim(TrimType.TRANSPARENT);    //裁剪,去除透明
     saveImage(document, layer);
     document.activeHistoryState = document.historyStates[document.historyStates.length-2];  //还原裁剪
@@ -203,23 +257,25 @@ function makeVisible(layer){
 }
 
 function saveImage(document, layer){
-    if(!fileNameReg.test(layer.name)){
-        return;
+    var name,format;
+    if(fileNameReg.test(layer.name)){
+        name = makeValidFileName(layer.name.replace(fileNameReg, ''));
+        format = layer.name.match(fileNameReg)[0];
+    } else {
+        name = makeValidFileName(layer.name);
+        format = '.png';
     }
     var setting = getSetting();
-    var name = makeValidFileName(layer.name.replace(fileNameReg, ''));
-    var format = layer.name.match(fileNameReg)[0];
     name = name+format;
-    var exportOptions = getExportOptions(layer);
+    var exportOptions = getExportOptions(format);
     var saveFile = File(setting.filePath + '/' + name);
 
     document.exportDocument(saveFile, ExportType.SAVEFORWEB, exportOptions)
 }
 
-function getExportOptions(layer){
+function getExportOptions(format){
     var setting = getSetting();
     var options = new ExportOptionsSaveForWeb();
-    var format = layer.name.match(fileNameReg)[0];
     switch(format){
         case '.png':
             options.format = SaveDocumentType.PNG;
@@ -232,19 +288,6 @@ function getExportOptions(layer){
             break;
     }
     return options;
-}
-
-function duplicateLayers(parentLayer){
-    for(var i=0, l=parentLayer.layers.length; i<l; i++){
-        var layer = parentLayer.layers[i];
-        if(layer.layers && layer.layers.length>0){
-            duplicateLayers(layer);
-        } else {
-            if(fileNameReg.test(layer.name)){
-                layer.duplicate(newDoc);
-            }
-        }
-    }
 }
 
 function saveSetting(dlg){
