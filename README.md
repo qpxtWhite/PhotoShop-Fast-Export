@@ -11,6 +11,7 @@
 #####注：脚本包含两个文件，Export Layers.jsx   dialog.json
 * 1、将需要保存的图层命名为.png或.jpg（如：abc.png）
 * 2、执行脚本
+* 3、如果PSD中图层较多，可能比较慢
 
 ### Export Selected Layers.jsx
 * 1、选中图层
